@@ -23,8 +23,8 @@ export const isProtected = (command) => /\bmcp\b|mcp[-_]|[-_]mcp/i.test(command)
 export function serverRoot(procs, pid) {
   let root = procs.find((p) => p.pid === pid);
   for (const p of ancestors(procs, pid)) {
-    const [t0] = tokens(p.command);
-    if (!DEV_TOOLS.test(t0) || isProtected(p.command)) break;
+    const [t0, t1] = tokens(p.command);
+    if (!DEV_TOOLS.test(t0) || AGENTS.test(t1 || '') || isProtected(p.command)) break;
     root = p;
   }
   return root;
@@ -99,14 +99,45 @@ export function formatTable(rows) {
     (rows.some((r) => r.protected) ? '  (* protected, never reaped)' : '')].join('\n');
 }
 
-/** SIGTERM the server tree (root + descendants), SIGKILL whatever survives graceMs. */
-export async function killServer(row, { graceMs = 10_000 } = {}) {
-  const procs = await listProcs();
+/**
+ * Which processes to signal for a server row. Refuses anything that could hit init, devsnooze itself
+ * or its ancestors (the agent/terminal running it). If the climbed root also hosts unrelated branches
+ * (a supervisor like pm2), only the listener's own subtree is taken.
+ */
+export function killPlan(procs, row, selfPid = process.pid) {
   const root = row.rootPid ?? row.pid;
-  const pids = [root, ...descendants(procs, root).map((p) => p.pid)];
-  for (const pid of pids) { try { process.kill(pid, 'SIGTERM'); } catch {} }
-  const alive = () => pids.filter((pid) => { try { process.kill(pid, 0); return true; } catch { return false; } });
+  if (!(root > 1) || !(row.pid > 1)) throw new Error(`refusing to signal pid ${root}`);
+  const self = new Set([selfPid, ...ancestors(procs, selfPid).map((p) => p.pid)]);
+  if (self.has(root) || self.has(row.pid)) throw new Error(`refusing to signal pid ${root}: it runs devsnooze itself`);
+  const byPid = new Map(procs.map((p) => [p.pid, p]));
+  const listenerTree = [row.pid, ...descendants(procs, row.pid).map((p) => p.pid)];
+  const allowed = new Set(listenerTree);
+  for (const a of ancestors(procs, row.pid)) {
+    allowed.add(a.pid);
+    if (a.pid === root) break;
+  }
+  const tree = [root, ...descendants(procs, root).map((p) => p.pid)];
+  const pick = tree.every((pid) => allowed.has(pid)) ? tree : listenerTree;
+  return pick.map((pid) => byPid.get(pid)).filter(Boolean);
+}
+
+const sameProc = (a, b) => b && a.command === b.command && b.etimeSec >= a.etimeSec;
+
+/** SIGTERM the planned processes, SIGKILL survivors after graceMs; each pid re-verified before every signal. */
+export async function killServer(row, { graceMs = 10_000 } = {}) {
+  const plan = killPlan(await listProcs(), row);
+  const signal = async (sig) => {
+    const now = new Map((await listProcs()).map((p) => [p.pid, p]));
+    const live = plan.filter((p) => sameProc(p, now.get(p.pid))); // pid not reused since we looked
+    for (const p of live) { try { process.kill(p.pid, sig); } catch {} }
+    return live.length;
+  };
+  await signal('SIGTERM');
   const end = Date.now() + graceMs;
-  while (alive().length && Date.now() < end) await sleep(200);
-  for (const pid of alive()) { try { process.kill(pid, 'SIGKILL'); } catch {} }
+  while (Date.now() < end) {
+    const now = new Map((await listProcs()).map((p) => [p.pid, p]));
+    if (!plan.some((p) => sameProc(p, now.get(p.pid)))) return;
+    await sleep(200);
+  }
+  await signal('SIGKILL');
 }

@@ -81,8 +81,9 @@ test('real requests keep it awake', async () => {
   assert.equal(starts(), 1);
 });
 
-test('proxies WebSocket upgrades', async () => {
-  const { port } = await setup();
+test('proxies WebSocket upgrades once the page has woken the server', async () => {
+  const { port, get } = await setup();
+  await get('/');
   const sock = net.connect(port, '127.0.0.1');
   const key = crypto.randomBytes(16).toString('base64');
   sock.write(`GET /ws HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: ${key}\r\nSec-WebSocket-Version: 13\r\n\r\n`);
@@ -113,6 +114,54 @@ test('over --max-mem but recently used: keeps running until a quiet moment', asy
   for (let i = 0; i < 6; i++) { await get('/'); await sleep(100); }
   assert.equal(s.stats().state, 'awake');
   await until(() => s.stats().state === 'sleeping', 5000);
+});
+
+function wsConnect(port, path = '/ws') {
+  const sock = net.connect(port, '127.0.0.1');
+  sock.on('error', () => {});
+  const key = crypto.randomBytes(16).toString('base64');
+  sock.write(`GET ${path} HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: ${key}\r\nSec-WebSocket-Version: 13\r\n\r\n`);
+  return sock;
+}
+
+test('a reconnecting HMR websocket does not wake a sleeping server', async () => {
+  const { s, starts, get, port } = await setup({ idleMs: 300 });
+  await get('/');
+  await until(() => s.stats().state === 'sleeping');
+  for (let i = 0; i < 5; i++) { wsConnect(port, '/_next/webpack-hmr'); wsConnect(port, '/'); await sleep(100); }
+  await sleep(300);
+  assert.equal(s.stats().state, 'sleeping');
+  assert.equal(starts(), 1);
+});
+
+test('HTTP heartbeat while asleep gets 503 and does not wake', async () => {
+  const { s, starts, get } = await setup();
+  const r = await get('/__vite_ping');
+  assert.equal(r.status, 503);
+  assert.equal(s.stats().state, 'sleeping');
+  assert.equal(starts(), 0);
+});
+
+test('close during a cold boot leaves no child behind', async () => {
+  const { s, get } = await setup({ env: { BOOT_DELAY_MS: '3000' } });
+  get('/').catch(() => {});
+  await until(() => s.stats().childPid);
+  const pgid = s.stats().childPid;
+  const t0 = Date.now();
+  await s.close();
+  assert.ok(Date.now() - t0 < 2500, 'close must not wait for the boot to finish');
+  assert.throws(() => process.kill(-pgid, 0));
+});
+
+test('requests arriving during close do not spawn a new child', async () => {
+  const { s, starts, get } = await setup();
+  await get('/');
+  const closing = s.close();
+  await get('/late').catch(() => {});
+  await closing;
+  await sleep(200);
+  assert.equal(starts(), 1);
+  assert.equal(s.stats().childPid, null);
 });
 
 test('writes and removes a state file', async () => {

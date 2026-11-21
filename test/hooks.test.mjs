@@ -12,7 +12,7 @@ const hook = (command, env = {}) => execFileSync('node', [GUARD], {
 test('guard denies a dev server and gives the wrapped command', () => {
   const out = JSON.parse(hook('cd app && npm run dev -- -p 3007'));
   assert.equal(out.hookSpecificOutput.permissionDecision, 'deny');
-  assert.match(out.hookSpecificOutput.permissionDecisionReason, /cd app && node ".*bin\/devsnooze\.mjs" run -- npm run dev -- -p 3007/);
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /cd app && node '.*bin\/devsnooze\.mjs' run -- npm run dev -- -p 3007/);
 });
 test('guard is silent for other commands', () => assert.equal(hook('npm test'), ''));
 test('guard warn mode does not block', () => {

@@ -10,7 +10,9 @@ let input = '';
 process.stdin.on('data', (d) => { input += d; });
 process.stdin.on('end', async () => {
   let sessionId;
-  try { sessionId = JSON.parse(input).session_id; } catch { return; }
+  let reason;
+  try { ({ session_id: sessionId, reason } = JSON.parse(input)); } catch { return; }
+  if (reason === 'clear') return; // /clear keeps working in the same terminal: keep its servers
   if (!sessionId || process.env.DEVSNOOZE_HOOK === 'off') return;
   try { execFileSync('node', [bin, 'stop', '--session', sessionId], { stdio: 'ignore', timeout: 20_000 }); } catch {}
   try {

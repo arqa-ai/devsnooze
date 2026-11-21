@@ -1,6 +1,6 @@
 import http from 'node:http';
 import net from 'node:net';
-import { startChild, stopTree, waitForPort, freePort } from './child.mjs';
+import { startChild, stopTree, waitForPort, freePort, groupAlive } from './child.mjs';
 import { listProcs, treeRss, treePids, footprints } from './proc.mjs';
 import { writeState, removeState } from './state.mjs';
 import { formatBytes, formatDuration } from './duration.mjs';
@@ -38,6 +38,7 @@ export function createSnooze({
   let lastActivity = Date.now();
   let lastRss = 0;
   let closing = false;
+  let closed = null;
   const sockets = new Set();
   const timers = [];
 
@@ -50,12 +51,15 @@ export function createSnooze({
   const setState = (s) => { state = s; persist(); };
 
   async function wake() {
+    if (closing) throw new Error('shutting down');
     if (stopping) await stopping;
+    if (closing) throw new Error('shutting down');
     if (state === 'awake') return;
     if (starting) return starting;
     starting = (async () => {
       setState('starting');
       const internal = await freePort();
+      if (closing) throw new Error('shutting down');
       const h = startChild(argv, { port: internal, cwd, env, stdio });
       child = h;
       starts++;
@@ -69,18 +73,25 @@ export function createSnooze({
         child = null;
         target = null;
         setState('sleeping');
+        // a wrapper (npm, sh) can exit while its children still run: clean the whole group
+        if (groupAlive(h.pid)) stopTree(h.pid, { graceMs: 2000 });
       });
       log(`waking: ${argv.join(' ')} (internal port ${internal})`);
       const t0 = Date.now();
       try {
-        const h2 = await waitForPort(internal, bootTimeoutMs, () => dead);
+        const h2 = await waitForPort(internal, bootTimeoutMs, () => dead || closing);
+        if (closing) throw new Error('shutting down');
         target = { host: h2, port: internal };
         lastActivity = Date.now();
         setState('awake');
         log(`awake in ${formatDuration(Date.now() - t0)} → http://localhost:${port}`);
       } catch (e) {
         await stopTree(h.pid, { graceMs: 2000 });
-        if (child === h) { child = null; setState('sleeping'); }
+        if (child === h) { child = null; target = null; setState('sleeping'); }
+        if (/did not listen/.test(e.message)) {
+          e.message += ". Does the command ignore $PORT or hardcode a port? Put '{port}' where the port goes, " +
+            "e.g. `devsnooze run -p 5173 -- vite --port '{port}'`";
+        }
         throw e;
       }
     })().finally(() => { starting = null; });
@@ -88,7 +99,7 @@ export function createSnooze({
   }
 
   async function sleepNow(reason) {
-    if (state !== 'awake' || stopping) return;
+    if (state !== 'awake' || stopping || closing) return;
     const h = child;
     setState('stopping');
     stopping = (async () => {
@@ -111,33 +122,45 @@ export function createSnooze({
   };
 
   const server = http.createServer(async (req, res) => {
-    if (!isHeartbeat(req.url)) lastActivity = Date.now();
-    inflight++;
-    let done = false;
-    const finish = () => { if (!done) { done = true; inflight--; } };
-    res.on('close', finish);
     try {
-      await wake();
+      const beat = isHeartbeat(req.url);
+      // tooling pings never wake a sleeping server and never count as use
+      if (beat && state !== 'awake') return fail(res, 503, 'server is asleep; reload the page to wake it');
+      if (!beat) {
+        lastActivity = Date.now();
+        inflight++;
+        let done = false;
+        res.on('close', () => { if (!done) { done = true; inflight--; } });
+      }
+      try {
+        await wake();
+      } catch (e) {
+        return fail(res, /did not listen/.test(e.message) ? 504 : 502, e.message);
+      }
+      const t = target;
+      if (!t || res.destroyed) return fail(res, 502, 'server went away; retry');
+      const up = http.request({ host: t.host, port: t.port, method: req.method, path: req.url, headers: req.headers }, (ur) => {
+        res.writeHead(ur.statusCode, ur.statusMessage, ur.rawHeaders);
+        ur.on('error', () => res.destroy());
+        ur.on('aborted', () => res.destroy());
+        ur.pipe(res);
+      });
+      up.on('error', (e) => fail(res, 502, `upstream error: ${e.message}`));
+      res.on('close', () => up.destroy());
+      req.pipe(up);
     } catch (e) {
-      return fail(res, /did not listen/.test(e.message) ? 504 : 502, e.message);
+      fail(res, 500, e.message);
     }
-    const up = http.request({ host: target.host, port: target.port, method: req.method, path: req.url, headers: req.headers }, (ur) => {
-      res.writeHead(ur.statusCode, ur.statusMessage, ur.rawHeaders);
-      ur.pipe(res);
-    });
-    up.on('error', (e) => fail(res, 502, `upstream error: ${e.message}`));
-    req.pipe(up);
   });
 
   server.on('upgrade', async (req, sock, head) => {
-    lastActivity = Date.now();
     sock.on('error', () => {});
-    try {
-      await wake();
-    } catch {
-      return sock.destroy();
-    }
-    const up = net.connect(target.port, target.host, () => {
+    // WebSockets are mostly HMR: they never wake a sleeping server and never count as use.
+    // A page load (plain HTTP) wakes it; the page then reconnects its sockets.
+    if (state !== 'awake' || closing) return sock.destroy();
+    const t = target;
+    if (!t) return sock.destroy();
+    const up = net.connect(t.port, t.host, () => {
       let raw = `${req.method} ${req.url} HTTP/${req.httpVersion}\r\n`;
       for (let i = 0; i < req.rawHeaders.length; i += 2) raw += `${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`;
       up.write(`${raw}\r\n`);
@@ -151,6 +174,7 @@ export function createSnooze({
     up.on('error', drop);
     up.on('close', drop);
     sock.on('close', drop);
+    if (sock.destroyed) drop();
   });
 
   const tick = Math.max(50, Math.min(Math.floor(idleMs / 3), 5000));
@@ -187,20 +211,31 @@ export function createSnooze({
       });
     },
     async close() {
+      if (closing) return closed;
       closing = true;
-      timers.forEach(clearInterval);
-      if (starting) await starting.catch(() => {});
-      if (stopping) await stopping;
-      if (child) {
+      closed = (async () => {
+        timers.forEach(clearInterval);
+        const done = new Promise((r) => server.close(() => r()));
+        server.closeAllConnections?.();
         for (const s of sockets) s.destroy();
-        const h = child;
-        await stopTree(h.pid, { graceMs });
-        await h.exited;
+        sockets.clear();
+        const h = child; // may still be booting: kill it now, don't wait for the boot
+        if (h) {
+          await stopTree(h.pid, { graceMs });
+          await h.exited;
+        }
         child = null;
-      }
-      server.closeAllConnections?.();
-      await new Promise((r) => server.close(() => r()));
-      removeState(process.pid, port);
+        target = null;
+        if (starting) await starting.catch(() => {});
+        if (stopping) await stopping.catch(() => {});
+        await done;
+        removeState(process.pid, port);
+      })();
+      return closed;
+    },
+    /** Last resort for process 'exit': synchronous SIGKILL of the child group. */
+    killNow() {
+      if (child?.pid) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} }
     },
     /** Stop the child now (used by `devsnooze stop` without killing the proxy). */
     sleep: (reason = 'requested') => sleepNow(reason),

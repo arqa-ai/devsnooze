@@ -25,8 +25,8 @@ const PS = parsePs(`
 test('ownerOf: claude session with status from sessions dir', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-claude-'));
   fs.mkdirSync(path.join(dir, 'sessions'));
-  fs.writeFileSync(path.join(dir, 'sessions', '22761.json'), JSON.stringify({ pid: 22761, sessionId: 'abc-123', name: 'arqa-ce', status: 'busy' }));
-  assert.deepEqual(ownerOf(PS, 27225, { claudeHome: dir }), { kind: 'claude', pid: 22761, sessionId: 'abc-123', name: 'arqa-ce', status: 'busy' });
+  fs.writeFileSync(path.join(dir, 'sessions', '22761.json'), JSON.stringify({ pid: 22761, sessionId: 'abc-123', name: 'app-ce', status: 'busy' }));
+  assert.deepEqual(ownerOf(PS, 27225, { claudeHome: dir }), { kind: 'claude', pid: 22761, sessionId: 'abc-123', name: 'app-ce', status: 'busy' });
 });
 
 test('ownerOf: claude without session file still detected', () => {
@@ -65,4 +65,44 @@ test('reapCandidates: only idle, old, unmanaged, not busy, not protected', () =>
     { ...base, port: 7, owner: { kind: 'terminal' } },
   ];
   assert.deepEqual(reapCandidates(rows, { minAgeSec: 3600 }).map((r) => r.port), [1, 7]);
+});
+
+import { killPlan } from '../src/ps.mjs';
+import { writeState, readStates } from '../src/state.mjs';
+
+const PS2 = parsePs(`
+    1     0  1000 05-00:00:00 /sbin/launchd
+  900     1  1000 01-00:00:00 node /usr/local/bin/claude
+  901   900  1000    10:00 node server.js
+  902   901  1000    10:00 node worker.js
+  950     1  1000 01-00:00:00 node /usr/local/lib/pm2/God.js
+  951   950  1000    10:00 node app-a.js
+  952   950  1000    10:00 node app-b.js
+`);
+
+test('serverRoot never climbs into a node-based agent', () => {
+  assert.equal(serverRoot(PS2, 901).pid, 901);
+});
+
+test('killPlan: root + descendants', () => {
+  assert.deepEqual(killPlan(PS2, { pid: 901, rootPid: 901 }, 12345).map((p) => p.pid).sort(), [901, 902]);
+});
+
+test('killPlan refuses pid <= 1, itself and its own ancestors', () => {
+  assert.throws(() => killPlan(PS2, { pid: 1, rootPid: 1 }, 902), /refusing/);
+  assert.throws(() => killPlan(PS2, { pid: 902, rootPid: 902 }, 902), /refusing/);
+  assert.throws(() => killPlan(PS2, { pid: 901, rootPid: 901 }, 902), /refusing/);
+});
+
+test('killPlan falls back to the listener subtree when the root also runs unrelated apps', () => {
+  // root climbed to a supervisor (pm2) that hosts other apps: only kill the listener
+  assert.deepEqual(killPlan(PS2, { pid: 951, rootPid: 950 }, 12345).map((p) => p.pid), [951]);
+});
+
+test('readStates drops files whose pid now belongs to a non-devsnooze process (pid reuse)', () => {
+  const prev = process.env.DEVSNOOZE_HOME;
+  process.env.DEVSNOOZE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-state-'));
+  writeState({ pid: 1, port: 1234, lastActivity: Date.now() }); // pid 1 is launchd/init
+  assert.deepEqual(readStates(), []);
+  process.env.DEVSNOOZE_HOME = prev;
 });

@@ -49,7 +49,7 @@ export function startChild(argv, { port, cwd = process.cwd(), env = process.env,
   return { pid: child.pid, child, exited };
 }
 
-function groupAlive(pgid) {
+export function groupAlive(pgid) {
   try {
     process.kill(-pgid, 0);
     return true;
@@ -60,13 +60,14 @@ function groupAlive(pgid) {
 
 /** SIGTERM the process group, SIGKILL after graceMs. Resolves when the group is gone. */
 export async function stopTree(pgid, { graceMs = 10_000 } = {}) {
-  if (!pgid || !groupAlive(pgid)) return;
+  if (!pgid || pgid <= 1 || !groupAlive(pgid)) return;
   try { process.kill(-pgid, 'SIGTERM'); } catch {}
   const deadline = Date.now() + graceMs;
   while (groupAlive(pgid) && Date.now() < deadline) await sleep(100);
   if (groupAlive(pgid)) {
     try { process.kill(-pgid, 'SIGKILL'); } catch {}
-    while (groupAlive(pgid)) await sleep(50);
+    const hard = Date.now() + 5000; // a process stuck in uninterruptible I/O must not hang us forever
+    while (groupAlive(pgid) && Date.now() < hard) await sleep(50);
   }
 }
 

@@ -14,11 +14,13 @@ process.stdin.on('end', () => {
   if (mode === 'off') return;
   let cmd = '';
   try { cmd = JSON.parse(input)?.tool_input?.command || ''; } catch { return; }
-  const r = classifyCommand(cmd, { wrap: `node "${bin}" run -- ` });
+  const quoted = `'${bin.replaceAll("'", "'\\''")}'`;
+  const r = classifyCommand(cmd, { wrap: `node ${quoted} run ` });
   if (!r.dev) return;
   const reason = 'This starts a dev server. Dev servers left running eat GBs of RAM after the task is done. ' +
-    'Run it through devsnooze instead — same port, but the real server starts on the first request and ' +
-    'stops after 20 min without requests (or restarts it when it grows past 4 GB):\n\n' + r.rewritten + '\n\n' +
+    'Run it through devsnooze instead: port ' + r.port + ' stays open, the real server starts on the first ' +
+    'request and stops after 20 min without requests ({port} is the internal port devsnooze hands the tool):\n\n' +
+    r.rewritten + '\n\n' +
     'If you only need to verify the code, prefer tests / typecheck / a production build over a dev server. ' +
     'Mention the port in your final answer.';
   const out = mode === 'warn'

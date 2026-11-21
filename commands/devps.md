@@ -1,4 +1,5 @@
 ---
+allowed-tools: Bash(node:*)
 description: List dev servers on this machine — owner session, real RAM, connections, reap candidates
 ---
 Dev servers right now:

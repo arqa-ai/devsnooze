@@ -58,4 +58,4 @@ stops its process group when idle or over memory; `ps/reap` = ps+lsof parsing wi
 - README (problem, numbers, install, usage, plugin), `docs/agents-snippet.md`, LICENSE MIT, package.json.
 
 ### Task 8: live acceptance
-- Run 2+ real arqa worktrees through devsnooze, measure RAM before/after, record in README.
+- Run 2+ real Next.js worktrees through devsnooze, measure RAM before/after, record in README.

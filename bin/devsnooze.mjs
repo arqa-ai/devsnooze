@@ -24,8 +24,8 @@ Usage:
 
 Examples:
   devsnooze run -- npm run dev -- -p 3007
-  devsnooze run --idle 10m -- next dev --turbopack -p {port}
-  devsnooze run -p 8000 -- uvicorn app:app --reload --port {port}
+  devsnooze run --idle 10m -- next dev --turbopack -p '{port}'
+  devsnooze run -p 8000 -- uvicorn app:app --reload --port '{port}'
 `;
 
 function parseFlags(args, spec) {
@@ -81,6 +81,10 @@ async function cmdRun(args) {
     process.exit(0);
   };
   for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, shutdown);
+  process.on('exit', () => snooze.killNow());
+  const crash = (e) => { process.stderr.write(`[devsnooze] crashed: ${e?.stack || e}\n`); snooze.killNow(); process.exit(1); };
+  process.on('uncaughtException', crash);
+  process.on('unhandledRejection', crash);
 }
 
 async function cmdPs(args) {

@@ -28,5 +28,5 @@ server.on('upgrade', (req, socket) => {
   socket.on('error', () => {});
 });
 
-server.listen(port, '127.0.0.1');
+setTimeout(() => server.listen(port, '127.0.0.1'), Number(process.env.BOOT_DELAY_MS || 0));
 process.on('SIGTERM', () => process.exit(0));
