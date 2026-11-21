@@ -1,0 +1,8 @@
+{
+  "name": "devsnooze",
+  "version": "0.1.0",
+  "description": "Stops Claude from leaving dev servers running: wraps next dev / vite / uvicorn --reload in a lazy proxy that sleeps when idle, stops a session's servers when it ends, adds /devps.",
+  "author": { "name": "arqa" },
+  "homepage": "https://github.com/arqa-ai/devsnooze",
+  "license": "MIT"
+}

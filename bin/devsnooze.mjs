@@ -16,7 +16,7 @@ Usage:
   devsnooze run [options] -- <command...>   start <command> lazily behind a proxy
       -p, --port N        public port (default: from the command's -p/--port, $PORT, or 3000)
       --idle 20m          stop the server after this long without requests
-      --max-mem 3g        restart the server when its process tree grows past this (0 = off)
+      --max-mem 4g        restart the server at the next quiet minute once it grows past this (0 = off)
       --boot-timeout 120s how long to wait for the server to listen
   devsnooze ps [--json]                     list every dev server on this machine
   devsnooze reap [--yes] [--min-age 1h]     stop forgotten servers (dry run without --yes)
@@ -53,7 +53,7 @@ async function cmdRun(args) {
   if (!argv.length) die(`no command given\n\n${HELP}`);
   const port = f.port ? Number(f.port) : detectPort(argv);
   const idleMs = parseDuration(f.idle ?? '20m');
-  const maxMem = parseBytes(f['max-mem'] ?? '3g');
+  const maxMem = parseBytes(f['max-mem'] ?? '4g');
   const procs = await listProcs().catch(() => []);
   const owner = ownerOf(procs, process.pid);
   const snooze = createSnooze({

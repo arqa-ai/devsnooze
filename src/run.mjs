@@ -17,8 +17,9 @@ export function createSnooze({
   port,
   host = undefined, // listen on all interfaces like dev servers do
   idleMs = 20 * 60_000,
-  maxMem = 3 * 1024 ** 3,
+  maxMem = 4 * 1024 ** 3,
   memCheckMs = 15_000,
+  memQuietMs = 60_000, // over the cap, restart only after this long without requests
   bootTimeoutMs = 120_000,
   graceMs = 10_000,
   cwd = process.cwd(),
@@ -166,7 +167,7 @@ export function createSnooze({
         lastRss = treeRss(procs, child.pid, await footprints(treePids(procs, child.pid)));
       } catch { return; }
       persist();
-      if (maxMem > 0 && lastRss > maxMem && inflight === 0) {
+      if (maxMem > 0 && lastRss > maxMem && inflight === 0 && Date.now() - lastActivity >= memQuietMs) {
         sleepNow(`using ${formatBytes(lastRss)} > --max-mem ${formatBytes(maxMem)}, restarting fresh`);
       }
     }, memCheckMs));

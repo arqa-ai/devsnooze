@@ -100,12 +100,19 @@ test('proxies WebSocket upgrades', async () => {
 });
 
 test('stops a server that grows over --max-mem', async () => {
-  const { s, starts, get } = await setup({ maxMem: 20 * 1024 * 1024, memCheckMs: 200, env: { ALLOC_MB: '60' } });
+  const { s, starts, get } = await setup({ maxMem: 20 * 1024 * 1024, memCheckMs: 200, memQuietMs: 0, env: { ALLOC_MB: '60' } });
   await get('/');
   await until(() => s.stats().state === 'sleeping', 5000);
   assert.equal(starts(), 1);
   assert.equal((await get('/')).status, 200);
   assert.equal(starts(), 2);
+});
+
+test('over --max-mem but recently used: keeps running until a quiet moment', async () => {
+  const { s, get } = await setup({ maxMem: 20 * 1024 * 1024, memCheckMs: 150, memQuietMs: 800, env: { ALLOC_MB: '60' } });
+  for (let i = 0; i < 6; i++) { await get('/'); await sleep(100); }
+  assert.equal(s.stats().state, 'awake');
+  await until(() => s.stats().state === 'sleeping', 5000);
 });
 
 test('writes and removes a state file', async () => {

@@ -45,8 +45,8 @@ devsnooze run [-p PORT] [--idle 20m] [--max-mem 3g] [--name NAME] -- <command...
 - **Idle** (no activity for `--idle`, default 20m, and no in-flight request) → stop: SIGTERM to
   the child's process group, SIGKILL after 10 s, open upgraded sockets closed. The proxy keeps
   the port; the next request wakes the server.
-- **Memory cap**: every 15 s sum RSS of the child process tree; above `--max-mem` (default 3g,
-  `0` disables) and no in-flight request → stop (it wakes fresh on the next request). Log it.
+- **Memory cap**: every 15 s sum RSS of the child process tree; above `--max-mem` (default 4g,
+  `0` disables), no in-flight request and no activity for 60 s → stop (it wakes fresh on the next request). Log it.
 - Child stdout/stderr are passed through, prefixed with nothing (agent tools read them as usual).
 - Ctrl-C / SIGTERM to devsnooze stops the child tree and exits.
 - State file `~/.devsnooze/run/<proxyPid>.json`: port, internal port, cwd, command, childPid,

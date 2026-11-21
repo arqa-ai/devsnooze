@@ -35,7 +35,7 @@ function segments(masked) {
   return out;
 }
 
-export function classifyCommand(cmd) {
+export function classifyCommand(cmd, { wrap = WRAP } = {}) {
   if (/\bdevsnooze\b/.test(cmd)) return { dev: false };
   const masked = maskQuotes(cmd);
   for (const [a, b] of segments(masked)) {
@@ -44,7 +44,7 @@ export function classifyCommand(cmd) {
     // insert after leading whitespace and VAR=value assignments
     const lead = /^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*/.exec(seg)[0].length;
     const at = a + lead;
-    return { dev: true, rewritten: cmd.slice(0, at) + WRAP + cmd.slice(at) };
+    return { dev: true, rewritten: cmd.slice(0, at) + wrap + cmd.slice(at) };
   }
   return { dev: false };
 }

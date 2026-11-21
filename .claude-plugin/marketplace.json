@@ -1,0 +1,16 @@
+{
+  "name": "devsnooze",
+  "owner": {
+    "name": "arqa"
+  },
+  "plugins": [
+    {
+      "name": "devsnooze",
+      "source": "./",
+      "description": "Dev servers that sleep when nobody looks at them \u2014 keeps AI agents from eating your RAM."
+    }
+  ],
+  "metadata": {
+    "description": "devsnooze \u2014 dev servers that sleep when nobody looks at them."
+  }
+}
