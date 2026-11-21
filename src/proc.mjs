@@ -49,9 +49,39 @@ export function descendants(procs, pid, kids = childrenMap(procs)) {
   return out;
 }
 
-export function treeRss(procs, pid) {
-  const self = procs.find((p) => p.pid === pid);
-  return (self?.rss || 0) + descendants(procs, pid).reduce((s, p) => s + p.rss, 0);
+export function treePids(procs, pid) {
+  return [pid, ...descendants(procs, pid).map((p) => p.pid)];
+}
+
+/** Memory of a process tree. `fp` (pid -> bytes) overrides RSS where larger (macOS footprint). */
+export function treeRss(procs, pid, fp = new Map()) {
+  const byPid = new Map(procs.map((p) => [p.pid, p]));
+  return treePids(procs, pid).reduce((s, x) => s + Math.max(byPid.get(x)?.rss || 0, fp.get(x) || 0), 0);
+}
+
+const UNIT = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 };
+
+/** Parse macOS `footprint --summary -p ...` -> Map(pid -> bytes) */
+export function parseFootprint(text) {
+  const m = new Map();
+  for (const x of text.matchAll(/\[(\d+)\]:.*?Footprint:\s*([\d.]+)\s*(B|KB|MB|GB)/g)) {
+    m.set(Number(x[1]), Math.round(Number(x[2]) * UNIT[x[3]]));
+  }
+  return m;
+}
+
+/**
+ * On macOS, RSS misses compressed and swapped memory — exactly where a bloated dev server lives
+ * when RAM is tight. phys_footprint (what Activity Monitor shows) is the honest number.
+ */
+export async function footprints(pids) {
+  if (process.platform !== 'darwin' || !pids.length) return new Map();
+  try {
+    const { stdout } = await run('footprint', ['--summary', ...pids.flatMap((p) => ['-p', String(p)])], { maxBuffer: 8 * 1024 * 1024 });
+    return parseFootprint(stdout);
+  } catch (e) {
+    return parseFootprint(e.stdout || '');
+  }
 }
 
 export function ancestors(procs, pid) {

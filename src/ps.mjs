@@ -1,4 +1,4 @@
-import { listProcs, listListeners, listEstablished, treeRss, descendants, ancestors, cwdOf } from './proc.mjs';
+import { listProcs, listListeners, listEstablished, treeRss, treePids, footprints, descendants, ancestors, cwdOf } from './proc.mjs';
 import { ownerOf, tokens } from './owner.mjs';
 import { readStates } from './state.mjs';
 import { formatBytes, formatDuration } from './duration.mjs';
@@ -70,6 +70,9 @@ export async function collect({ claudeHome } = {}) {
     });
   }
   const out = [...rows.values()];
+  const roots = out.map((r) => r.rootPid ?? r.pid);
+  const fp = await footprints(roots.flatMap((pid) => treePids(procs, pid)));
+  out.forEach((r, i) => { r.rss = treeRss(procs, roots[i], fp); });
   await Promise.all(out.filter((r) => !r.dir).map(async (r) => { r.dir = await cwdOf(r.rootPid ?? r.pid); }));
   return out;
 }

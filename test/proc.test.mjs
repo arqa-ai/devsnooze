@@ -49,3 +49,20 @@ test('parseLsofEstablished counts inbound connections per local port', () => {
   assert.equal(m.get('27225:3007'), 2);
   assert.equal(m.get('999:50001'), 1);
 });
+
+import { parseFootprint } from '../src/proc.mjs';
+test('parseFootprint (macOS footprint --summary)', () => {
+  const txt = 'node [27225]: 64-bit    Footprint: 4918 MB (16384 bytes per page)\nnode [27188]: 64-bit    Footprint: 18 MB (16384 bytes per page)\npy [5]: 64-bit    Footprint: 1.5 GB (16384 bytes per page)\nx [6]: 64-bit    Footprint: 900 KB (16384 bytes per page)\nSummary Footprint: 5020 MB\n';
+  const m = parseFootprint(txt);
+  assert.equal(m.get(27225), 4918 * 1024 ** 2);
+  assert.equal(m.get(27188), 18 * 1024 ** 2);
+  assert.equal(m.get(5), 1.5 * 1024 ** 3);
+  assert.equal(m.get(6), 900 * 1024);
+  assert.equal(m.size, 4);
+});
+
+test('treeRss prefers footprint when larger', () => {
+  const p = parsePs(PS);
+  const fp = new Map([[27225, 5 * 1024 ** 3]]);
+  assert.equal(treeRss(p, 27188, fp), (30000 + 60000) * 1024 + 5 * 1024 ** 3);
+});

@@ -1,7 +1,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import { startChild, stopTree, waitForPort, freePort } from './child.mjs';
-import { listProcs, treeRss } from './proc.mjs';
+import { listProcs, treeRss, treePids, footprints } from './proc.mjs';
 import { writeState, removeState } from './state.mjs';
 import { formatBytes, formatDuration } from './duration.mjs';
 
@@ -162,7 +162,8 @@ export function createSnooze({
     timers.push(setInterval(async () => {
       if (state !== 'awake' || !child) return;
       try {
-        lastRss = treeRss(await listProcs(), child.pid);
+        const procs = await listProcs();
+        lastRss = treeRss(procs, child.pid, await footprints(treePids(procs, child.pid)));
       } catch { return; }
       persist();
       if (maxMem > 0 && lastRss > maxMem && inflight === 0) {
