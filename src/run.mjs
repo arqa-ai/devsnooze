@@ -36,6 +36,7 @@ export function createSnooze({
   let inflight = 0;
   let lastActivity = Date.now();
   let lastRss = 0;
+  let closing = false;
   const sockets = new Set();
   const timers = [];
 
@@ -61,7 +62,7 @@ export function createSnooze({
       h.exited.then(({ code, signal, error }) => {
         dead = true;
         if (child !== h) return;
-        if (state === 'awake' || state === 'starting') {
+        if (!closing && (state === 'awake' || state === 'starting')) {
           log(`server exited (${error ? error.message : signal || `code ${code}`}); will restart on next request`);
         }
         child = null;
@@ -184,6 +185,7 @@ export function createSnooze({
       });
     },
     async close() {
+      closing = true;
       timers.forEach(clearInterval);
       if (starting) await starting.catch(() => {});
       if (stopping) await stopping;
