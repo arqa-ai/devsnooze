@@ -1,0 +1,13 @@
+{
+  "name": "devsnooze",
+  "version": "0.1.0",
+  "description": "Dev servers that sleep when nobody looks at them. Stops AI coding agents' forgotten next dev / vite servers from eating your RAM.",
+  "type": "module",
+  "bin": { "devsnooze": "bin/devsnooze.mjs" },
+  "files": ["bin", "src", "plugin", "docs/agents-snippet.md", "README.md", "LICENSE"],
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test test/*.test.mjs" },
+  "keywords": ["dev-server", "memory", "next.js", "vite", "claude-code", "ai-agents", "proxy", "idle"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/arqa-ai/devsnooze.git" }
+}
