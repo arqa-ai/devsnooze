@@ -28,10 +28,12 @@ const ALREADY_WRAPPED = /\bdevsnooze(?:\.mjs)?['"]?\s+(?:run|ps|reap|stop)\b/;
 
 export const WRAP = 'npx -y devsnooze run ';
 
-/** Blank out quoted text and heredoc bodies (keeping length) so they are never matched. */
+/** Blank out heredoc bodies, then quoted text (keeping length) so neither is ever matched. */
 function mask(s) {
-  let out = s.replace(/'[^']*'|"(?:\\.|[^"\\])*"/g, (m) => ' '.repeat(m.length));
-  out = out.replace(/(<<-?\s*\\?(\w+)[^\n]*\n)([\s\S]*?\n\s*\2\s*(?:\n|$))/g, (_, h, _t, body) => h + body.replace(/[^\n]/g, ' '));
+  // heredocs first: `<<'EOF'` is the usual agent form, and apostrophes in the body would unbalance quotes
+  let out = s.replace(/(<<-?[ \t]*(['"]?)\\?(\w+)\2[^\n]*\n)([\s\S]*?)(?=\n[ \t]*\3[ \t]*(?:\n|$)|$)/g,
+    (_, head, _q, _t, body) => head + body.replace(/[^\n]/g, ' '));
+  out = out.replace(/'[^'\n]*'|"(?:\\.|[^"\\\n])*"/g, (m) => ' '.repeat(m.length));
   return out;
 }
 
@@ -65,12 +67,16 @@ export function classifyCommand(cmd, { wrap = WRAP } = {}) {
     let pub;
     let body = original;
     const explicit = EXPLICIT_PORT.exec(seg);
-    const addr = tool.django && /runserver\s+(?:(\S+):)?(\d+)\b/.exec(seg);
+    // django: `runserver [host][:port]` takes a positional address, not a flag
+    const addr = tool.django && /runserver\s+(?!-)(\S+)/.exec(seg);
     if (explicit) {
       pub = Number(explicit[1]); // devsnooze detects and rewrites -p/--port itself
     } else if (addr) {
-      pub = Number(addr[2]);
-      body = original.replace(/(runserver\s+(?:\S+:)?)\d+/, "$1'{port}'");
+      const m = /^(?:(.*):)?(\d+)$/.exec(addr[1]);
+      pub = m ? Number(m[2]) : tool.port;
+      const host = m ? m[1] : addr[1];
+      const repl = host ? `${host}:'{port}'` : "'{port}'";
+      body = original.replace(/(runserver\s+)(?!-)\S+/, (_, a) => a + repl);
     } else {
       pub = tool.port;
       const m = tool.re.exec(seg.slice(lead));

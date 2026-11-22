@@ -21,6 +21,10 @@ const DEV = [
   ['uvicorn main:app --reload', `${W}-p 8000 -- uvicorn main:app --reload --port '{port}'`],
   ['flask run', `${W}-p 5000 -- flask run --port '{port}'`],
   ['python manage.py runserver', `${W}-p 8000 -- python manage.py runserver '{port}'`],
+  ['python manage.py runserver 0.0.0.0', `${W}-p 8000 -- python manage.py runserver 0.0.0.0:'{port}'`],
+  ['python manage.py runserver localhost', `${W}-p 8000 -- python manage.py runserver localhost:'{port}'`],
+  ['python manage.py runserver 0.0.0.0:8000', `${W}-p 8000 -- python manage.py runserver 0.0.0.0:'{port}'`],
+  ['python manage.py runserver 8002', `${W}-p 8002 -- python manage.py runserver '{port}'`],
   ['python manage.py runserver 0.0.0.0:8001', `${W}-p 8001 -- python manage.py runserver 0.0.0.0:'{port}'`],
   ['bin/rails s', `${W}-p 3000 -- bin/rails s -p '{port}'`],
   ['astro dev', `${W}-p 4321 -- astro dev --port '{port}'`],
@@ -28,6 +32,7 @@ const DEV = [
   ['( cd app && npm run dev )', `( cd app && ${W}-p 3000 -- npm run dev -- --port '{port}' )`],
   ['npm install\nnpm run dev', `npm install\n${W}-p 3000 -- npm run dev -- --port '{port}'`],
   ['npm run build & npm run dev', `npm run build & ${W}-p 3000 -- npm run dev -- --port '{port}'`],
+  ["cat > f <<'EOF'\nnpm run dev\nEOF\nnpm run dev", `cat > f <<'EOF'\nnpm run dev\nEOF\n${W}-p 3000 -- npm run dev -- --port '{port}'`],
   ['cd ~/devsnooze-demo && npm run dev', `cd ~/devsnooze-demo && ${W}-p 3000 -- npm run dev -- --port '{port}'`],
 ];
 const NOT_DEV = [
@@ -36,6 +41,10 @@ const NOT_DEV = [
   'devsnooze ps', 'grep -r "next dev" .', 'grep -r next dev .', 'echo npm run dev', 'uvicorn app:app --port 8000',
   'cat package.json | grep dev', 'npm run dev:css', 'next dev --help', 'vite --version',
   'cat > README.md <<EOF\nRun `npm run dev` to start\nEOF', 'man next dev',
+  "cat > R.md <<'EOF'\nrun npm run dev\nEOF",
+  'git commit -F - <<"EOF"\nnpm run dev now works\nEOF',
+  "git commit -F - <<'EOF'\ndon't use npm run dev\nEOF",
+  "cat <<-'EOF' > notes.md\n\tnext dev is slow\n\tEOF",
 ];
 
 test('dev-server commands are caught and rewritten', () => {
