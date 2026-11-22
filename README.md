@@ -120,7 +120,7 @@ Jupyter or a local model server can show up — that's why `reap` is a dry run u
 - If a script hardcodes its port (`"dev": "next dev -p 3000"`) and the tool ignores `$PORT`, put
   `'{port}'` in the command yourself; devsnooze reports a boot timeout with this hint otherwise.
 - The first request after sleep pays the cold start (Next.js: ~10–15 s to compile a page).
-- macOS is the tested platform. Linux should work (`ps` + `lsof`), with RSS instead of footprint.
+- Tested on macOS (real use) and Linux (CI). On Linux memory is RSS; macOS uses phys_footprint.
 
 ## Claude Code plugin
 
