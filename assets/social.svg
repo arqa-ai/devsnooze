@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">
+  <rect width="1280" height="640" fill="#141824"/>
+  <path d="M206 150a110 110 0 1 0 92 168A86 86 0 0 1 206 150z" fill="#F4C95D"/>
+  <text x="250" y="214" font-size="44" font-weight="700" fill="#9FB4FF">z</text>
+  <text x="282" y="178" font-size="30" font-weight="700" fill="#9FB4FF" opacity=".75">z</text>
+  <text x="380" y="250" font-size="84" font-weight="700" fill="#e6e9f2">devsnooze</text>
+  <text x="382" y="312" font-size="32" fill="#9FB4FF">dev servers that sleep</text>
+  <text x="382" y="352" font-size="32" fill="#9FB4FF">when nobody looks at them</text>
+  <text x="120" y="470" font-size="30" fill="#ff7b72">next dev forgotten by an agent: 5.0G</text>
+  <text x="120" y="520" font-size="30" fill="#7ee787">a dev server under devsnooze, idle: 22M</text>
+  <text x="120" y="590" font-size="24" fill="#7d869c">github.com/arqa-ai/devsnooze · Claude Code plugin · npx devsnooze</text>
+</svg>
