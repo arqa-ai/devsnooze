@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 380" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14">
+  <rect width="880" height="380" rx="14" fill="#141824"/>
+  <circle cx="24" cy="22" r="6" fill="#ff5f57"/><circle cx="44" cy="22" r="6" fill="#febc2e"/><circle cx="64" cy="22" r="6" fill="#28c840"/>
+  <text x="440" y="27" fill="#7d869c" text-anchor="middle">devsnooze ps — 16 GB MacBook, 4 agent sessions</text>
+  <text x="28" y="66" fill="#9FB4FF">before: raw next dev left by agents</text>
+  <text x="28" y="92" fill="#7d869c">PORT</text>
+  <text x="80" y="92" fill="#7d869c">STATE</text>
+  <text x="180" y="92" fill="#7d869c">RAM</text>
+  <text x="234" y="92" fill="#7d869c">CONN</text>
+  <text x="280" y="92" fill="#7d869c">AGE</text>
+  <text x="28" y="114" fill="#e6e9f2">3007</text>
+  <text x="80" y="114" fill="#e6e9f2">unmanaged</text>
+  <text x="180" y="114" fill="#ff7b72">5.0G</text>
+  <text x="234" y="114" fill="#e6e9f2">0</text>
+  <text x="280" y="114" fill="#e6e9f2">3d21h</text>
+  <text x="28" y="136" fill="#e6e9f2">3017</text>
+  <text x="80" y="136" fill="#e6e9f2">unmanaged</text>
+  <text x="180" y="136" fill="#ff7b72">4.6G</text>
+  <text x="234" y="136" fill="#e6e9f2">0</text>
+  <text x="280" y="136" fill="#e6e9f2">1d5h</text>
+  <text x="28" y="158" fill="#e6e9f2">3008</text>
+  <text x="80" y="158" fill="#e6e9f2">unmanaged</text>
+  <text x="180" y="158" fill="#ff7b72">3.6G</text>
+  <text x="234" y="158" fill="#e6e9f2">0</text>
+  <text x="280" y="158" fill="#e6e9f2">1d3h</text>
+  <text x="28" y="180" fill="#e6e9f2">3006</text>
+  <text x="80" y="180" fill="#e6e9f2">unmanaged</text>
+  <text x="180" y="180" fill="#ff7b72">3.2G</text>
+  <text x="234" y="180" fill="#e6e9f2">0</text>
+  <text x="280" y="180" fill="#e6e9f2">2d0h</text>
+  <text x="28" y="212" fill="#ff7b72">all dev servers: 19.1G · swap 24.4/25.6 GB</text>
+  <text x="470" y="66" fill="#9FB4FF">after: started via devsnooze</text>
+  <text x="470" y="92" fill="#7d869c">PORT</text>
+  <text x="522" y="92" fill="#7d869c">STATE</text>
+  <text x="610" y="92" fill="#7d869c">RAM</text>
+  <text x="664" y="92" fill="#7d869c">IDLE</text>
+  <text x="470" y="114" fill="#e6e9f2">3007</text>
+  <text x="522" y="114" fill="#e6e9f2">awake</text>
+  <text x="610" y="114" fill="#F4C95D">2.2G</text>
+  <text x="664" y="114" fill="#e6e9f2">1m (in use)</text>
+  <text x="470" y="136" fill="#e6e9f2">3040</text>
+  <text x="522" y="136" fill="#e6e9f2">sleeping</text>
+  <text x="610" y="136" fill="#7ee787">22M</text>
+  <text x="664" y="136" fill="#e6e9f2">5h</text>
+  <text x="470" y="158" fill="#e6e9f2">8081</text>
+  <text x="522" y="158" fill="#e6e9f2">awake</text>
+  <text x="610" y="158" fill="#F4C95D">661M</text>
+  <text x="664" y="158" fill="#e6e9f2">3m</text>
+  <text x="470" y="180" fill="#7d869c">a forgotten one sleeps instead of growing</text>
+  <text x="470" y="212" fill="#7ee787">an idle server costs ~22–35M, not GBs</text>
+  <line x1="28" y1="246" x2="852" y2="246" stroke="#2a3042"/>
+  <text x="28" y="280" fill="#e6e9f2">A proxy holds the port. The real server starts on the first page load,</text>
+  <text x="28" y="304" fill="#e6e9f2">sleeps after 20 min without requests, and HMR pings can't wake it.</text>
+  <text x="28" y="344" fill="#7d869c">npx devsnooze run -- npm run dev</text>
+  <text x="852" y="344" fill="#7d869c" text-anchor="end">github.com/arqa-ai/devsnooze</text>
+</svg>

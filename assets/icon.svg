@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="devsnooze">
+  <rect width="128" height="128" rx="28" fill="#141824"/>
+  <path d="M70 26a38 38 0 1 0 32 58A30 30 0 0 1 70 26z" fill="#F4C95D"/>
+  <text x="80" y="52" font-family="ui-monospace,Menlo,monospace" font-size="20" font-weight="700" fill="#9FB4FF">z</text>
+  <text x="92" y="38" font-family="ui-monospace,Menlo,monospace" font-size="14" font-weight="700" fill="#9FB4FF" opacity=".75">z</text>
+</svg>

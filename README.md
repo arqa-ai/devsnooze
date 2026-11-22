@@ -2,26 +2,44 @@
 
 **Dev servers that sleep when nobody looks at them.**
 
+[![test](https://github.com/arqa-ai/devsnooze/actions/workflows/test.yml/badge.svg)](https://github.com/arqa-ai/devsnooze/actions/workflows/test.yml)
+[![npm](https://img.shields.io/npm/v/devsnooze)](https://www.npmjs.com/package/devsnooze)
+![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-blue)
+
 AI coding agents (Claude Code, Codex, Cursor) start `next dev`, `vite`, `uvicorn --reload` to check
-their work — and leave them running. Run a few sessions in parallel worktrees and your laptop is
-swapping by lunch.
+their work — and leave them running. A few sessions in parallel worktrees and your laptop is swapping
+by lunch: each forgotten `next dev` grows to 3–5 GB.
 
-Measured on a 16 GB MacBook running four agent sessions:
+![devsnooze ps: before and after](assets/before-after.svg)
+
+## Quick start
+
+**Claude Code** — the plugin makes every session start dev servers the snoozable way:
 
 ```
-$ devsnooze ps
-PORT  STATE      RAM   CONN  IDLE/AGE   OWNER                     DIR
-3006  unmanaged  4.0G  1     age 1d0h   claude:app-89(shell)      ~/wt/app/invoices
-3007  unmanaged  5.0G  0     age 2d21h  claude:app-ce(shell)      ~/wt/app/payments
-3008  unmanaged  3.6G  1     age 3h42   claude:app-ce(shell)      ~/wt/app/onboarding
-3017  unmanaged  4.6G  3     age 4h49   claude:app-7f(shell)      ~/wt/app/settings
-...
-11 dev servers, 19.2G total
+/plugin marketplace add arqa-ai/devsnooze
+/plugin install devsnooze@devsnooze
 ```
 
-Swap was 21.5 of 22.5 GB. Process cleaners such as zclean, cc-reaper, proc-janitor and devclean are
-built around **orphans** (parent process gone). Every one of these servers still had a live parent —
-an agent session left open for days — so orphan-based cleanup doesn't apply.
+Restart your sessions (`claude --resume`) so they pick up the hook.
+
+**Anything else** — wrap the command:
+
+```sh
+npx -y devsnooze run -- npm run dev
+npx -y devsnooze ps          # what's running, who owns it, real RAM
+```
+
+## Why
+
+Measured on a 16 GB MacBook with four agent sessions: four `next dev` processes held 3.2–5.0 GB each,
+none had a browser connected, the oldest had been running for almost four days, and swap was
+24.4 of 25.6 GB.
+
+Process cleaners such as zclean, cc-reaper, proc-janitor and devclean are built around **orphans**
+(parent process gone). Every one of these servers still had a live parent — an agent session left open
+for days — so orphan-based cleanup doesn't apply.
 
 A dev server isn't wrong to exist. It's wrong to stay **awake while nobody uses it**.
 
@@ -54,6 +72,7 @@ Live run on a real Next.js 15 app (one page compiled):
 ```sh
 npx -y devsnooze --help          # no install
 npm i -g devsnooze               # or globally
+npx -y github:arqa-ai/devsnooze  # straight from GitHub
 ```
 
 Node ≥ 18, macOS or Linux (`lsof` required), zero dependencies.
@@ -104,11 +123,6 @@ Jupyter or a local model server can show up — that's why `reap` is a dry run u
 - macOS is the tested platform. Linux should work (`ps` + `lsof`), with RSS instead of footprint.
 
 ## Claude Code plugin
-
-```
-/plugin marketplace add arqa-ai/devsnooze
-/plugin install devsnooze@devsnooze
-```
 
 - **PreToolUse hook**: when Claude runs `next dev`, `vite`, `npm|pnpm|yarn|bun run dev`, `nuxt|astro dev`,
   `uvicorn --reload`, `flask run`, `rails s` or `manage.py runserver`, the call is denied with the exact
